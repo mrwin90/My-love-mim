@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIM + Mubarak</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Hind+Siliguri:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+<style>
+  :root{
+    --bg-deep:#15141d;
+    --bg-panel:#1c1b27;
+    --bg-panel-2:#242331;
+    --bg-chat:#0f0e15;
+    --coral:#ff8966;
+    --gold:#e8c468;
+    --thread: linear-gradient(90deg,var(--coral),var(--gold));
+    --text-light:#f5f1ea;
+    --text-muted:#9c97ae;
+    --bubble-theirs:#2a2939;
+    --danger:#e1584f;
+    --ok:#6fd3a0;
+    --radius:18px;
+    --font-display:'Fraunces', serif;
+    --font-body:'Hind Siliguri','Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:var(--font-body);
+    background:var(--bg-deep);
+    color:var(--text-light);
+    overflow:hidden;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;}
+  }
+
+  .app{
+    display:grid;
+    grid-template-columns:280px 1fr;
+    height:100vh;
+  }
+  @media (max-width:760px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{display:none;}
+    .sidebar.show{display:flex; position:fixed; inset:0; z-index:40;}
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    background:var(--bg-panel);
+    display:flex;
+    flex-direction:column;
+    padding:28px 22px;
+    border-right:1px solid #ffffff10;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .brand-mark{
+    position:relative;
+    width:52px; height:28px;
+    flex-shrink:0;
+  }
+  .brand-mark svg{width:100%;height:100%;display:block;}
+  .stitch{
+    stroke:url(#threadGrad);
+    stroke-width:2.4;
+    fill:none;
+    stroke-dasharray:4 5;
+    stroke-linecap:round;
+    animation:stitchPulse 2.6s ease-in-out infinite;
+  }
+  @keyframes stitchPulse{
+    0%,100%{stroke-dashoffset:0; opacity:.55;}
+    50%{stroke-dashoffset:9; opacity:1;}
+  }
+  .brand h1{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:22px;
+    letter-spacing:.2px;
+    margin:0;
+  }
+  .brand h1 span{color:var(--coral);}
+  .tagline{
+    color:var(--text-muted);
+    font-size:12.5px;
+    margin:0 0 28px 0;
+    letter-spacing:.3px;
+  }
+
+  .identity-card{
+    background:var(--bg-panel-2);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:18px;
+  }
+  .identity-row{display:flex; align-items:center; gap:12px;}
+  .avatar{
+    width:44px;height:44px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);
+    font-weight:700; font-size:16px;
+    background:var(--thread);
+    color:#1a1420;
+  }
+  .identity-name{font-weight:600; font-size:15px;}
+  .identity-role{font-size:12px; color:var(--text-muted); margin-top:2px;}
+
+  .status-line{
+    display:flex; align-items:center; gap:8px;
+    margin-top:14px; font-size:13px; color:var(--text-muted);
+  }
+  .dot{width:8px;height:8px;border-radius:50%; background:var(--text-muted); transition:background .3s;}
+  .dot.connecting{background:var(--gold); animation:blink 1.2s infinite;}
+  .dot.online{background:var(--ok);}
+  .dot.offline{background:var(--danger);}
+  @keyframes blink{50%{opacity:.3;}}
+
+  .other-card{
+    margin-top:auto;
+    padding-top:18px;
+    border-top:1px solid #ffffff10;
+    font-size:12px;
+    color:var(--text-muted);
+    line-height:1.6;
+  }
+  .other-card b{color:var(--text-light);}
+
+  /* ---------- Main chat ---------- */
+  .main{
+    display:flex;
+    flex-direction:column;
+    background:var(--bg-chat);
+    min-width:0;
+  }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 24px;
+    border-bottom:1px solid #ffffff10;
+    background:var(--bg-panel);
+  }
+  .topbar-left{display:flex; align-items:center; gap:12px;}
+  .menu-btn{display:none; background:none; border:none; color:var(--text-light); font-size:20px; cursor:pointer;}
+  @media (max-width:760px){.menu-btn{display:block;}}
+  .peer-title{font-family:var(--font-display); font-weight:600; font-size:17px;}
+  .peer-sub{font-size:12px; color:var(--text-muted); margin-top:2px;}
+
+  .call-btns{display:flex; gap:10px;}
+  .icon-btn{
+    width:42px;height:42px;border-radius:50%;
+    border:1px solid #ffffff18;
+    background:var(--bg-panel-2);
+    color:var(--text-light);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition:transform .15s ease, background .15s ease;
+  }
+  .icon-btn:hover{transform:translateY(-2px); background:#31304444;}
+  .icon-btn.audio:hover{color:var(--gold);}
+  .icon-btn.video:hover{color:var(--coral);}
+  .icon-btn svg{width:18px;height:18px;}
+
+  .messages{
+    flex:1;
+    overflow-y:auto;
+    padding:26px 24px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .empty-state{
+    margin:auto;
+    text-align:center;
+    color:var(--text-muted);
+    max-width:280px;
+  }
+  .empty-state .stitch-big{width:120px; margin:0 auto 14px;}
+  .empty-state h3{font-family:var(--font-display); color:var(--text-light); font-weight:600; margin:0 0 6px;}
+  .empty-state p{font-size:13px; line-height:1.6; margin:0;}
+
+  .msg-row{display:flex; max-width:78%;}
+  .msg-row.mine{align-self:flex-end; justify-content:flex-end;}
+  .msg-row.theirs{align-self:flex-start;}
+  .bubble{
+    padding:10px 14px;
+    border-radius:16px;
+    font-size:14.5px;
+    line-height:1.5;
+    word-break:break-word;
+  }
+  .mine .bubble{
+    background:var(--thread);
+    color:#241a17;
+    border-bottom-right-radius:4px;
+  }
+  .theirs .bubble{
+    background:var(--bubble-theirs);
+    color:var(--text-light);
+    border-bottom-left-radius:4px;
+  }
+  .bubble img, .bubble video{
+    max-width:240px; max-height:280px;
+    border-radius:10px; display:block; margin-top:4px;
+  }
+  .bubble .meta-time{
+    display:block; font-size:10.5px; opacity:.6; margin-top:4px;
+  }
+  .sys-row{
+    align-self:center;
+    font-size:12px;
+    color:var(--text-muted);
+    background:#ffffff08;
+    padding:5px 12px;
+    border-radius:20px;
+  }
+
+  .composer{
+    display:flex; align-items:center; gap:10px;
+    padding:14px 20px;
+    border-top:1px solid #ffffff10;
+    background:var(--bg-panel);
+  }
+  .composer input[type=text]{
+    flex:1;
+    background:var(--bg-panel-2);
+    border:1px solid #ffffff14;
+    border-radius:22px;
+    padding:12px 18px;
+    color:var(--text-light);
+    font-size:14.5px;
+    font-family:var(--font-body);
+    outline:none;
+  }
+  .composer input[type=text]::placeholder{color:var(--text-muted);}
+  .attach-btn, .send-btn{
+    width:42px;height:42px;border-radius:50%;
+    border:none; cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .attach-btn{background:var(--bg-panel-2); color:var(--text-light); border:1px solid #ffffff18;}
+  .attach-btn:hover{color:var(--gold);}
+  .send-btn{background:var(--thread); color:#241a17;}
+  .send-btn:hover{filter:brightness(1.08);}
+  .attach-btn svg, .send-btn svg{width:18px;height:18px;}
+
+  /* ---------- Call overlay ---------- */
+  .call-overlay{
+    position:fixed; inset:0; background:#0b0a11ee;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    z-index:100; backdrop-filter:blur(6px);
+  }
+  .call-overlay.show{display:flex;}
+  .call-stage{
+    position:relative;
+    width:min(760px,92vw);
+    height:min(520px,70vh);
+    background:#000;
+    border-radius:22px;
+    overflow:hidden;
+    box-shadow:0 20px 60px #00000080;
+  }
+  video.remote-vid{width:100%; height:100%; object-fit:cover; background:#111;}
+  video.local-vid{
+    position:absolute; bottom:16px; right:16px;
+    width:130px; height:90px; border-radius:12px;
+    object-fit:cover; border:2px solid #ffffff30;
+    background:#111;
+  }
+  .call-audio-face{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px;
+  }
+  .call-avatar-big{
+    width:110px;height:110px;border-radius:50%;
+    background:var(--thread); display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:38px; color:#241a17;
+  }
+  .call-name{font-family:var(--font-display); font-size:20px; font-weight:600;}
+  .call-status{color:var(--text-muted); font-size:13px;}
+  .call-controls{
+    display:flex; gap:16px; margin-top:22px;
+  }
+  .call-controls button{
+    width:54px;height:54px;border-radius:50%; border:none; cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--bg-panel-2); color:var(--text-light);
+    border:1px solid #ffffff18;
+  }
+  .call-controls button svg{width:20px;height:20px;}
+  .call-controls .end-call{background:var(--danger); color:#fff;}
+  .call-controls button.active{background:var(--coral); color:#241a17;}
+
+  .incoming-banner{
+    position:fixed; top:18px; left:50%; transform:translateX(-50%);
+    background:var(--bg-panel); border:1px solid #ffffff18;
+    border-radius:18px; padding:14px 18px; display:none;
+    align-items:center; gap:14px; z-index:110;
+    box-shadow:0 12px 30px #00000060;
+  }
+  .incoming-banner.show{display:flex;}
+  .incoming-banner button{
+    border:none; border-radius:20px; padding:8px 16px; font-size:13px; cursor:pointer; font-weight:600;
+  }
+  .incoming-banner .accept{background:var(--ok); color:#0e1f16;}
+  .incoming-banner .reject{background:var(--danger); color:#fff;}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:#ffffff18; border-radius:8px;}
+
+  /* ---------- Passcode gate ---------- */
+  .gate{
+    position:fixed; inset:0; z-index:200;
+    background:radial-gradient(circle at 30% 20%, #262238, var(--bg-deep) 60%);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .gate-card{
+    width:min(380px,100%);
+    background:var(--bg-panel);
+    border:1px solid #ffffff14;
+    border-radius:24px;
+    padding:34px 30px;
+    text-align:center;
+    box-shadow:0 24px 70px #00000070;
+  }
+  .gate-card .brand{justify-content:center; margin-bottom:4px;}
+  .gate-card .tagline{margin-bottom:26px;}
+  .gate-card p.hint{font-size:12.5px; color:var(--text-muted); margin:0 0 20px; line-height:1.6;}
+  .gate-card input[type=password]{
+    width:100%; background:var(--bg-panel-2); border:1px solid #ffffff18;
+    border-radius:14px; padding:14px 16px; color:var(--text-light);
+    font-size:15px; font-family:var(--font-body); outline:none; text-align:center;
+    letter-spacing:2px; margin-bottom:14px;
+  }
+  .gate-card input[type=password]:focus{border-color:var(--coral);}
+  .gate-card button.gate-submit{
+    width:100%; padding:13px; border:none; border-radius:14px;
+    background:var(--thread); color:#241a17; font-weight:600; font-size:14.5px;
+    cursor:pointer; font-family:var(--font-body);
+  }
+  .gate-card button.gate-submit:hover{filter:brightness(1.07);}
+  .gate-error{color:var(--danger); font-size:12.5px; margin-top:10px; display:none;}
+  .gate-note{margin-top:18px; font-size:11.5px; color:var(--text-muted); line-height:1.6;}
+
+  /* ---------- Call link panel ---------- */
+  .link-card{
+    background:var(--bg-panel-2);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:18px;
+  }
+  .link-card b{font-size:13px; display:block; margin-bottom:10px;}
+  .link-row{display:flex; gap:8px; margin-bottom:8px;}
+  .link-row:last-child{margin-bottom:0;}
+  .link-copy-btn{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:9px 10px; border-radius:12px; border:1px solid #ffffff18;
+    background:var(--bg-panel); color:var(--text-light); font-size:12.5px;
+    cursor:pointer; font-family:var(--font-body); transition:background .15s;
+  }
+  .link-copy-btn:hover{background:#31304444;}
+  .link-copy-btn svg{width:14px;height:14px; flex-shrink:0;}
+  .link-copy-btn.copied{color:var(--ok); border-color:var(--ok);}
+</style>
+</head>
+<body>
+
+<!-- Passcode gate: only whoever knows this word can ever join the room -->
+<div class="gate" id="gateScreen">
+  <div class="gate-card">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 52 28">
+          <circle cx="10" cy="14" r="9" fill="#302b3e"/>
+          <text x="10" y="18" text-anchor="middle" font-family="Fraunces, serif" font-weight="700" font-size="11" fill="#f5f1ea">M</text>
+          <path class="stitch" d="M20 14 H32"/>
+          <circle cx="42" cy="14" r="9" fill="#302b3e"/>
+          <text x="42" y="18" text-anchor="middle" font-family="Fraunces, serif" font-weight="700" font-size="11" fill="#f5f1ea">Mu</text>
+        </svg>
+      </div>
+      <h1>MIM<span>+</span>Mubarak</h1>
+    </div>
+    <p class="tagline">দুজনের জন্য একটাই সুতোয় বাঁধা জায়গা</p>
+    <p class="hint">শুধু তোমরা দুজনই জানো এমন একটা গোপন শব্দ/পিন বসাও। যে এই শব্দটা জানবে না, সে কখনোই এই রুমে ঢুকতে পারবে না।</p>
+    <input type="password" id="gatePasscode" placeholder="গোপন শব্দ / পিন" autocomplete="off">
+    <button class="gate-submit" id="gateSubmitBtn">প্রবেশ করো</button>
+    <div class="gate-error" id="gateError">শব্দটা অন্তত ৪ অক্ষরের হতে হবে</div>
+    <p class="gate-note">প্রথমবার যেকোনো একজন যেকোনো শব্দ ঠিক করে দিলে, দুজনকেই ভবিষ্যতে ঠিক সেই একই শব্দ দিয়ে ঢুকতে হবে। এই ডিভাইসে একবার ঢুকলে পরের বার আর জিজ্ঞেস করবে না।</p>
+  </div>
+</div>
+
+<svg width="0" height="0">
+  <defs>
+    <linearGradient id="threadGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff8966"/>
+      <stop offset="1" stop-color="#e8c468"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="app" id="mainApp" style="display:none;">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 52 28">
+          <circle cx="10" cy="14" r="9" fill="#302b3e"/>
+          <text x="10" y="18" text-anchor="middle" font-family="Fraunces, serif" font-weight="700" font-size="11" fill="#f5f1ea">M</text>
+          <path class="stitch" d="M20 14 H32"/>
+          <circle cx="42" cy="14" r="9" fill="#302b3e"/>
+          <text x="42" y="18" text-anchor="middle" font-family="Fraunces, serif" font-weight="700" font-size="11" fill="#f5f1ea">Mu</text>
+        </svg>
+      </div>
+      <h1>MIM<span>+</span>Mubarak</h1>
+    </div>
+    <p class="tagline">দুজনের জন্য একটাই সুতোয় বাঁধা জায়গা</p>
+
+    <div class="identity-card">
+      <div class="identity-row">
+        <div class="avatar" id="meAvatar">?</div>
+        <div>
+          <div class="identity-name" id="meName">সংযোগ হচ্ছে…</div>
+          <div class="identity-role">তোমার আইডি</div>
+        </div>
+      </div>
+      <div class="status-line">
+        <span class="dot connecting" id="statusDot"></span>
+        <span id="statusText">সার্ভারে সংযোগ হচ্ছে…</span>
+      </div>
+    </div>
+
+    <div class="link-card">
+      <b>কল লিংক শেয়ার করো</b>
+      <div class="link-row">
+        <button class="link-copy-btn" id="copyAudioLinkBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          অডিও কল লিংক
+        </button>
+      </div>
+      <div class="link-row">
+        <button class="link-copy-btn" id="copyVideoLinkBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          ভিডিও কল লিংক
+        </button>
+      </div>
+    </div>
+
+    <div class="other-card">
+      <b>নিরাপত্তা</b><br>
+      গোপন শব্দ না জানলে কেউ এই রুমে ঢুকতেই পারবে না। চ্যাট, ছবি, ভিডিও, অডিও/ভিডিও কল — সব সরাসরি তোমাদের দুটো ডিভাইসের মধ্যে (peer-to-peer) হয়, কোনো সার্ভারে জমা থাকে না। উপরের "কল লিংক" বাটনে চাপ দিলে এমন একটা লিংক কপি হবে যেটাতে ক্লিক করলে সরাসরি কল-এ চলে যাবে।
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <div>
+          <div class="peer-title" id="peerTitle">Mubarak</div>
+          <div class="peer-sub" id="peerSub">অপেক্ষা করছে…</div>
+        </div>
+      </div>
+      <div class="call-btns">
+        <button class="icon-btn audio" id="audioCallBtn" title="অডিও কল">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+        <button class="icon-btn video" id="videoCallBtn" title="ভিডিও কল">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="empty-state" id="emptyState">
+        <h3>এখনো কোনো বার্তা নেই</h3>
+        <p>নিচে লিখে পাঠাও, অথবা ছবি/ভিডিও শেয়ার করো। দুজনেই অনলাইন থাকলে কল বাটনে চাপ দিয়ে কথা বলা যাবে।</p>
+      </div>
+    </div>
+
+    <div class="composer">
+      <button class="attach-btn" id="attachBtn" title="ছবি / ভিডিও পাঠাও">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </button>
+      <input type="file" id="fileInput" accept="image/*,video/*" hidden>
+      <input type="text" id="textInput" placeholder="একটা বার্তা লেখো…">
+      <button class="send-btn" id="sendBtn" title="পাঠাও">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </main>
+</div>
+
+<!-- Incoming call banner -->
+<div class="incoming-banner" id="incomingBanner">
+  <span id="incomingText">Mubarak কল করছে…</span>
+  <button class="accept" id="acceptCallBtn">গ্রহণ</button>
+  <button class="reject" id="rejectCallBtn">প্রত্যাখ্যান</button>
+</div>
+
+<!-- Call overlay -->
+<div class="call-overlay" id="callOverlay">
+  <div class="call-stage" id="callStage">
+    <video class="remote-vid" id="remoteVideo" autoplay playsinline></video>
+    <video class="local-vid" id="localVideo" autoplay playsinline muted></video>
+    <div class="call-audio-face" id="audioFace" style="display:none;">
+      <div class="call-avatar-big" id="callAvatarBig">?</div>
+      <div class="call-name" id="callPeerName">Mubarak</div>
+      <div class="call-status" id="callStatusText">রিং হচ্ছে…</div>
+    </div>
+  </div>
+  <div class="call-controls">
+    <button id="muteBtn" title="মিউট"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></button>
+    <button id="camBtn" title="ক্যামেরা"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
+    <button class="end-call" id="endCallBtn" title="কল শেষ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
+  </div>
+</div>
+
+<script>
+/* ---------------- Identity: this app is built for exactly two people ---------------- */
+const NAME_A = "MIM";
+const NAME_B = "Mubarak";
+let ID_A, ID_B; // derived from the shared secret passcode, set after gate passes
+
+let myId, myName, otherId, otherName;
+let peer, dataConn, mediaCall, localStream;
+let isMuted = false, camOff = false, currentCallKind = null; // 'audio' | 'video'
+let pendingAutoCall = null; // 'audio' | 'video' if URL asked to jump straight into a call
+
+/* Turns any passcode into a stable, non-guessable room id (client-side only —
+   good enough to keep strangers from ever landing in this room, not bank-grade crypto). */
+async function roomIdFromPasscode(pass){
+  const enc = new TextEncoder().encode('mim-mubarak::' + pass.trim().toLowerCase());
+  const hashBuf = await crypto.subtle.digest('SHA-256', enc);
+  const hex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  return 'mm-' + hex.slice(0, 20);
+}
+
+function getUrlParams(){
+  return new URLSearchParams(window.location.search);
+}
+
+/* ---------------- Gate: only the two who know the passcode ever get in ---------------- */
+const GATE_KEY = 'mimMubarakPasscode';
+
+async function unlockWithPasscode(pass){
+  const room = await roomIdFromPasscode(pass);
+  ID_A = room + '-a';
+  ID_B = room + '-b';
+  localStorage.setItem(GATE_KEY, pass);
+  $('#gateScreen').style.display = 'none';
+  $('#mainApp').style.display = 'grid';
+  startPeer(ID_A, NAME_A, ID_B, NAME_B, false);
+}
+
+function initGate(){
+  const params = getUrlParams();
+  const urlPass = params.get('p');
+  const saved = localStorage.getItem(GATE_KEY);
+
+  if(urlPass){
+    unlockWithPasscode(urlPass);
+    return;
+  }
+  if(saved){
+    unlockWithPasscode(saved);
+    return;
+  }
+  // no passcode known yet — show the gate form
+  $('#gateSubmitBtn').addEventListener('click', submitGate);
+  $('#gatePasscode').addEventListener('keydown', e=>{ if(e.key==='Enter') submitGate(); });
+}
+
+function submitGate(){
+  const val = $('#gatePasscode').value.trim();
+  if(val.length < 4){
+    $('#gateError').style.display = 'block';
+    return;
+  }
+  $('#gateError').style.display = 'none';
+  unlockWithPasscode(val);
+}
+
+const $ = s => document.querySelector(s);
+const messagesEl = $('#messages');
+const emptyState = $('#emptyState');
+const statusDot = $('#statusDot');
+const statusText = $('#statusText');
+const peerSub = $('#peerSub');
+
+function setStatus(kind, text){
+  statusDot.className = 'dot ' + kind;
+  statusText.textContent = text;
+}
+
+function addSystemMsg(text){
+  const row = document.createElement('div');
+  row.className = 'sys-row';
+  row.textContent = text;
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function addMessage({mine, kind, text, url, time}){
+  emptyState.style.display = 'none';
+  const row = document.createElement('div');
+  row.className = 'msg-row ' + (mine ? 'mine' : 'theirs');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  if(kind === 'text'){
+    const p = document.createElement('div');
+    p.textContent = text;
+    bubble.appendChild(p);
+  } else if(kind === 'image'){
+    const img = document.createElement('img');
+    img.src = url;
+    bubble.appendChild(img);
+  } else if(kind === 'video'){
+    const vid = document.createElement('video');
+    vid.src = url;
+    vid.controls = true;
+    bubble.appendChild(vid);
+  }
+  const t = document.createElement('span');
+  t.className = 'meta-time';
+  t.textContent = time || new Date().toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'});
+  bubble.appendChild(t);
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+/* ---------------- Peer bootstrap: try to become MIM, else Mubarak ---------------- */
+function initials(name){ return name.slice(0,2); }
+
+function startPeer(id, name, other, otherNm, isFallback){
+  peer = new Peer(id, { debug:0 });
+
+  peer.on('open', pid=>{
+    myId = pid; myName = name; otherId = other; otherName = otherNm;
+    $('#meAvatar').textContent = initials(myName);
+    $('#meName').textContent = myName;
+    $('#peerTitle').textContent = otherName;
+    $('#incomingText').textContent = otherName + ' কল করছে…';
+    $('#callPeerName').textContent = otherName;
+    $('#callAvatarBig').textContent = initials(otherName);
+    setStatus('connecting', otherName + ' এর অপেক্ষায়…');
+    peerSub.textContent = 'অফলাইন';
+    tryConnectData();
+
+    const callParam = getUrlParams().get('call');
+    if(callParam === 'audio' || callParam === 'video'){
+      pendingAutoCall = callParam;
+      // strip the param so a page refresh doesn't re-trigger the call
+      const url = new URL(window.location);
+      url.searchParams.delete('call');
+      history.replaceState({}, '', url);
+    }
+  });
+
+  peer.on('error', err=>{
+    if(!isFallback && (err.type === 'unavailable-id')){
+      // someone already is MIM — become Mubarak
+      startPeer(ID_B, NAME_B, ID_A, NAME_A, true);
+    } else if(err.type === 'peer-unavailable'){
+      // other side not online yet, retry later
+    } else {
+      console.warn('Peer error', err);
+    }
+  });
+
+  peer.on('connection', conn=>{
+    dataConn = conn;
+    wireDataConn();
+  });
+
+  peer.on('call', call=>{
+    incomingMediaCall(call);
+  });
+}
+
+function tryConnectData(){
+  if(dataConn && dataConn.open) return;
+  try{
+    const conn = peer.connect(otherId, {reliable:true});
+    conn.on('open', ()=>{
+      dataConn = conn;
+      wireDataConn();
+    });
+    conn.on('error', ()=>{});
+  }catch(e){}
+  setTimeout(()=>{ if(!dataConn || !dataConn.open) tryConnectData(); }, 3000);
+}
+
+function wireDataConn(){
+  setStatus('online', otherName + ' অনলাইন');
+  peerSub.textContent = 'অনলাইন';
+  addSystemMsg(otherName + ' এর সাথে সংযোগ হয়েছে');
+
+  if(pendingAutoCall){
+    const kind = pendingAutoCall;
+    pendingAutoCall = null;
+    setTimeout(()=> placeCall(kind), 400);
+  }
+
+  dataConn.on('data', payload=>{
+    if(payload.type === 'text'){
+      addMessage({mine:false, kind:'text', text:payload.text});
+    } else if(payload.type === 'file'){
+      const blob = new Blob([payload.buffer], {type:payload.mime});
+      const url = URL.createObjectURL(blob);
+      addMessage({mine:false, kind: payload.mime.startsWith('video')?'video':'image', url});
+    }
+  });
+
+  dataConn.on('close', ()=>{
+    setStatus('offline', otherName + ' অফলাইন হয়ে গেছে');
+    peerSub.textContent = 'অফলাইন';
+    addSystemMsg(otherName + ' সংযোগ বিচ্ছিন্ন হয়েছে');
+    dataConn = null;
+    setTimeout(tryConnectData, 2000);
+  });
+}
+
+/* ---------------- Sending text & files ---------------- */
+$('#sendBtn').addEventListener('click', sendText);
+$('#textInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendText(); });
+
+function sendText(){
+  const input = $('#textInput');
+  const text = input.value.trim();
+  if(!text) return;
+  addMessage({mine:true, kind:'text', text});
+  if(dataConn && dataConn.open){
+    dataConn.send({type:'text', text});
+  } else {
+    addSystemMsg('বার্তা পাঠানো যায়নি — ' + otherName + ' এখন অফলাইন');
+  }
+  input.value = '';
+}
+
+$('#attachBtn').addEventListener('click', ()=> $('#fileInput').click());
+$('#fileInput').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const buffer = reader.result;
+    const url = URL.createObjectURL(file);
+    addMessage({mine:true, kind: file.type.startsWith('video')?'video':'image', url});
+    if(dataConn && dataConn.open){
+      dataConn.send({type:'file', buffer, mime:file.type});
+    } else {
+      addSystemMsg('ফাইল পাঠানো যায়নি — ' + otherName + ' এখন অফলাইন');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
+});
+
+/* ---------------- Calls ---------------- */
+const callOverlay = $('#callOverlay');
+const localVideo = $('#localVideo');
+const remoteVideo = $('#remoteVideo');
+const audioFace = $('#audioFace');
+const incomingBanner = $('#incomingBanner');
+let pendingIncomingCall = null;
+
+$('#audioCallBtn').addEventListener('click', ()=> placeCall('audio'));
+$('#videoCallBtn').addEventListener('click', ()=> placeCall('video'));
+
+async function placeCall(kind){
+  if(!peer || !otherId){ addSystemMsg('এখনো সংযোগ প্রস্তুত হয়নি'); return; }
+  currentCallKind = kind;
+  try{
+    localStream = await navigator.mediaDevices.getUserMedia({ audio:true, video: kind==='video' });
+  }catch(e){
+    addSystemMsg('ক্যামেরা/মাইক্রোফোনের অনুমতি পাওয়া যায়নি');
+    return;
+  }
+  openCallUI(kind, 'কল হচ্ছে…');
+  mediaCall = peer.call(otherId, localStream, {metadata:{kind}});
+  wireMediaCall(kind);
+}
+
+function incomingMediaCall(call){
+  pendingIncomingCall = call;
+  const kind = (call.metadata && call.metadata.kind) || 'audio';
+  $('#incomingText').textContent = otherName + (kind==='video' ? ' ভিডিও কল করছে…' : ' অডিও কল করছে…');
+  incomingBanner.classList.add('show');
+}
+
+$('#acceptCallBtn').addEventListener('click', async ()=>{
+  incomingBanner.classList.remove('show');
+  if(!pendingIncomingCall) return;
+  const kind = (pendingIncomingCall.metadata && pendingIncomingCall.metadata.kind) || 'audio';
+  currentCallKind = kind;
+  try{
+    localStream = await navigator.mediaDevices.getUserMedia({audio:true, video: kind==='video'});
+  }catch(e){
+    addSystemMsg('ক্যামেরা/মাইক্রোফোনের অনুমতি পাওয়া যায়নি');
+    pendingIncomingCall.close();
+    return;
+  }
+  openCallUI(kind, 'সংযুক্ত হচ্ছে…');
+  pendingIncomingCall.answer(localStream);
+  mediaCall = pendingIncomingCall;
+  wireMediaCall(kind);
+});
+
+$('#rejectCallBtn').addEventListener('click', ()=>{
+  incomingBanner.classList.remove('show');
+  if(pendingIncomingCall){ pendingIncomingCall.close(); pendingIncomingCall = null; }
+});
+
+function wireMediaCall(kind){
+  mediaCall.on('stream', remoteStream=>{
+    $('#callStatusText').textContent = 'সংযুক্ত';
+    if(kind === 'video'){
+      remoteVideo.srcObject = remoteStream;
+    } else {
+      remoteVideo.srcObject = remoteStream; // audio still plays via hidden video el
+    }
+  });
+  mediaCall.on('close', endCallCleanup);
+  mediaCall.on('error', endCallCleanup);
+}
+
+function openCallUI(kind, statusMsg){
+  callOverlay.classList.add('show');
+  $('#callStatusText').textContent = statusMsg;
+  if(kind === 'video'){
+    audioFace.style.display = 'none';
+    localVideo.style.display = 'block';
+    remoteVideo.style.display = 'block';
+    localVideo.srcObject = localStream;
+  } else {
+    audioFace.style.display = 'flex';
+    localVideo.style.display = 'none';
+    remoteVideo.style.display = 'none';
+    remoteVideo.srcObject = null;
+  }
+}
+
+$('#endCallBtn').addEventListener('click', ()=>{
+  if(mediaCall) mediaCall.close();
+  endCallCleanup();
+});
+
+function endCallCleanup(){
+  callOverlay.classList.remove('show');
+  if(localStream){
+    localStream.getTracks().forEach(t=>t.stop());
+    localStream = null;
+  }
+  remoteVideo.srcObject = null;
+  localVideo.srcObject = null;
+  mediaCall = null;
+  isMuted = false; camOff = false;
+  $('#muteBtn').classList.remove('active');
+  $('#camBtn').classList.remove('active');
+}
+
+$('#muteBtn').addEventListener('click', ()=>{
+  if(!localStream) return;
+  isMuted = !isMuted;
+  localStream.getAudioTracks().forEach(t=> t.enabled = !isMuted);
+  $('#muteBtn').classList.toggle('active', isMuted);
+});
+
+$('#camBtn').addEventListener('click', ()=>{
+  if(!localStream) return;
+  camOff = !camOff;
+  localStream.getVideoTracks().forEach(t=> t.enabled = !camOff);
+  $('#camBtn').classList.toggle('active', camOff);
+});
+
+/* ---------------- Mobile sidebar toggle ---------------- */
+$('#menuBtn').addEventListener('click', ()=> $('#sidebar').classList.toggle('show'));
+
+/* ---------------- Call-link sharing ---------------- */
+function buildCallLink(kind){
+  const url = new URL(window.location.href.split('?')[0]);
+  const pass = localStorage.getItem(GATE_KEY);
+  if(pass) url.searchParams.set('p', pass);
+  url.searchParams.set('call', kind);
+  return url.toString();
+}
+
+function wireCopyBtn(btnId, kind, label){
+  const btn = $(btnId);
+  btn.addEventListener('click', async ()=>{
+    const link = buildCallLink(kind);
+    try{
+      await navigator.clipboard.writeText(link);
+    }catch(e){
+      // fallback for browsers that block clipboard without a secure context
+      const ta = document.createElement('textarea');
+      ta.value = link; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    const original = btn.innerHTML;
+    btn.classList.add('copied');
+    btn.textContent = '✓ কপি হয়েছে';
+    setTimeout(()=>{ btn.classList.remove('copied'); btn.innerHTML = original; }, 1800);
+  });
+}
+wireCopyBtn('#copyAudioLinkBtn', 'audio');
+wireCopyBtn('#copyVideoLinkBtn', 'video');
+
+/* ---------------- Boot ---------------- */
+initGate();
+</script>
+</body>
+</html>
